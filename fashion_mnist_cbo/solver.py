@@ -25,7 +25,9 @@ class CBOSolver(object):
             "train_loss": [],
             "val_loss": [],
             "train_acc": [],
-            "val_acc": []
+            "val_acc": [],
+            "epoch_imgs_train": None,
+            "epoch_imgs_val": None
         }
         self.logger = logger
         self.d = 0
@@ -89,7 +91,7 @@ class CBOSolver(object):
         for i in idx:
             self.model.load_state_dict(self.get_state_dict(i))
             out = self.model(x)
-            loss = F.cross_entropy(out, targets)
+            loss = F.l1_loss(out, x)
             losses.append(loss)
         stop_crit = self.update_consensus(idx, losses)
         self.update_particle(idx, stop_crit)
@@ -118,16 +120,17 @@ class CBOSolver(object):
         print("Starting evaluation on {} set ...".format(split))
         for data, target in tqdm(dataloader):
             out = self.model(data)
-            loss = F.cross_entropy(out, target, reduction='sum')
+            if self.losses['epoch_imgs_{}'.format(split)] is None:
+                self.losses['epoch_imgs_{}'.format(split)] = out.clone()
+            loss = F.l1_loss(out, data, reduction='sum')
             total_loss += loss.item()
-            pred_c = torch.argmax(out, dim=1)
-            num_correct += torch.eq(pred_c, target).sum().item()
+            '''pred_c = torch.argmax(out, dim=1)
+            num_correct += torch.eq(pred_c, target).sum().item()'''
             num_data += data.shape[0]
-        print(num_data)
         total_loss = total_loss / num_data
-        acc = num_correct / num_data
+        #acc = num_correct / num_data
         self.losses["{}_loss".format(split)].append(total_loss)
-        self.losses["{}_acc".format(split)].append(acc)
+        self.losses["{}_acc".format(split)].append(0)
     
     def dump_logs(self, epoch):
         self.logger.add_scalars(
@@ -146,6 +149,19 @@ class CBOSolver(object):
             },
             epoch
         )
+        self.logger.add_images(
+            "log/epoch_outs_train",
+            self.losses["epoch_imgs_train"],
+            epoch
+        )
+        self.logger.add_images(
+            "log/epoch_outs_val",
+            self.losses["epoch_imgs_val"],
+            epoch
+        )
+        
+        self.losses["epoch_imgs_val"] = None
+        self.losses["epoch_imgs_train"] = None
 
         return self.losses
 

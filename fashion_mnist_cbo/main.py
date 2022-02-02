@@ -2,9 +2,9 @@ import os
 import torch
 import numpy as np
 from torchvision import datasets, transforms
-from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data import Subset
 from torch.utils.tensorboard import SummaryWriter
-from model import FashionCNN, FashionFC
+from model import FashionCNN, FashionFC, FashionAE
 from solver import CBOSolver
 import argparse
 from tqdm import tqdm
@@ -40,17 +40,17 @@ test_set = datasets.FashionMNIST('./data', download=True, train=False, transform
 indices = list(range(len(train_set)))
 np.random.shuffle(indices)
 split = int(np.floor(0.8 * len(train_set)))
-train_sample = SubsetRandomSampler(indices[:split])
-valid_sample = SubsetRandomSampler(indices[split:])
+train_dataset = Subset(train_set, indices[:split])
+valid_dataset = Subset(train_set, indices[split:])
 
-train_loader_eval = torch.utils.data.DataLoader(train_set, sampler=train_sample, batch_size=args.data_batch_size)
-train_loader = torch.utils.data.DataLoader(train_set, sampler=train_sample, batch_size=args.data_batch_size, drop_last=True)
-val_loader = torch.utils.data.DataLoader(train_set, sampler=valid_sample, batch_size=args.data_batch_size)
+train_loader_eval = torch.utils.data.DataLoader(train_dataset, batch_size=args.data_batch_size)
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.data_batch_size, drop_last=True, shuffle=True)
+val_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=args.data_batch_size)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=args.data_batch_size)
 
 os.makedirs(os.path.join(args.exp, 'tensorboard'), exist_ok=True)
 logger = SummaryWriter(os.path.join(args.exp, 'tensorboard'))
-net = FashionFC()
+net = FashionAE()
 net.eval()
 solver = CBOSolver(net, N=args.N, lmda=args.lmda, 
                    sigma=args.sigma, gamma=args.gamma, 
