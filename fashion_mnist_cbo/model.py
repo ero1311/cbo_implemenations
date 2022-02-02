@@ -24,9 +24,20 @@ class FashionCNN(nn.Module):
 
         return out
 
+class FashionFC(nn.Module):
+
+    def __init__(self):
+        super(FashionFC, self).__init__()
+        self.fc = nn.Linear(784, 10)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        B, _, _, _ = x.shape
+        return self.relu(self.fc(x.view(B, -1)))
+
 if __name__ == '__main__':
     x = torch.randn(64, 1, 28, 28)
-    model = FashionCNN()
+    model = FashionFC()
     start = timeit.default_timer()
     result = model(x)
     print("Inference on CPU: {} seconds".format(timeit.default_timer() - start))
